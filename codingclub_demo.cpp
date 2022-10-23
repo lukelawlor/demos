@@ -1,10 +1,10 @@
 // By Luke L
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <iostream>
 
-#include <math.h>
+#include <cstdint>
+#include <cstdlib>
+
+#include <cmath>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -13,70 +13,72 @@
 #define	VSYNC
 
 // If vsync is disabled, this value represents how many ticks the program will wait between each frame
-#define	FRAME_TICKS	30
+namespace constants
+{
+	inline constexpr auto FRAME_TICKS {30};
+	inline constexpr auto TEXT_YSPACE {100};
+	inline constexpr auto SRC_READ_MAX {10000};
+}
 
-#define	TEXT_YSPACE	100
-
-#define	SRC_READ_MAX	10000
-
-typedef struct{
+struct CCDemoText
+{
 	SDL_Texture *tex;
 	int w;
 	int h;
-} CCDemoText;
+};
 
-TTF_Font *g_font;
-SDL_Window *g_window;
-SDL_Renderer *g_renderer;
+static TTF_Font *g_font;
+static SDL_Window *g_window;
+static SDL_Renderer *g_renderer;
 
 void ccdemo_hsv_to_rgb(double h, double s, double v, unsigned int *pr, unsigned int *pg, unsigned int *pb);
 void ccdemo_draw_text(CCDemoText *text, int x, int y, float scale, float rot);
-CCDemoText *ccdemo_load_text(char *str);
-CCDemoText *ccdemo_load_text_wrap(char *str, int wrap);
-char *get_src_code(void);
+CCDemoText *ccdemo_load_text(const char *str);
+CCDemoText *ccdemo_load_text_wrap(const char *str, int wrap);
+const char *get_src_code(void);
 
 int main(int argc, char **argv)
 {
-	int screen_width = 640;
-	int screen_height = 480;
+	auto screen_width {640};
+	auto screen_height {480};
 
 	// Initialize things
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
-		fprintf(stderr, "failed to initialize SDL. SDL Error: %s\n", SDL_GetError());
+		std::cerr << "failed to initialize SDL. SDL Error: " << SDL_GetError() << '\n';
 		return 1;
 	}
 	if ((g_window = SDL_CreateWindow("Coding Club SDL Demo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_width, screen_height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE)) == NULL)
 	{
-		fprintf(stderr, "failed to create window. SDL Error: %s\n", SDL_GetError());
+		std::cerr << "failed create window. SDL Error: " << SDL_GetError() << '\n';
 		return 1;
 	}
 #ifdef	VSYNC
-	int renderer_flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
+	int renderer_flags {SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC};
 #else
-	int renderer_flags = SDL_RENDERER_ACCELERATED;
+	int renderer_flags {SDL_RENDERER_ACCELERATED};
 #endif
 	if ((g_renderer = SDL_CreateRenderer(g_window, -1, renderer_flags)) == NULL)
 	{
-		fprintf(stderr, "failed to create renderer. SDL Error: %s\n", SDL_GetError());
+		std::cerr << "failed create renderer. SDL Error: " << SDL_GetError() << '\n';
 		return 1;
 	}
 	if (TTF_Init() == -1)
 	{
-		fprintf(stderr, "failed to initialize SDL_ttf. SDL Error: %s\n", TTF_GetError());
+		std::cerr << "failed initialize SDL_ttf. SDL Error: " << SDL_GetError() << '\n';
 		return 1;
 	}
 	if ((g_font = TTF_OpenFont("freemono.ttf", 17)) == NULL)
 	{
-		fprintf(stderr, "failed to open font. SDL Error: %s\n", TTF_GetError());
+		std::cerr << "failed to open font. SDL Error: " << SDL_GetError() << '\n';
 		return 1;
 	}
 	// Demo loop
-	bool demo_running = true;
+	bool demo_running {true};
 
 	// Background color values
-	unsigned int cr, cg, cb, hue;
-	hue = 0;
+	unsigned cr, cg, cb;
+	double hue {0};
 	
 	CCDemoText *t_title, *t_tag, *t_yes, *t_code;
 	t_title = ccdemo_load_text("CODING & WEB DESIGN CLUB");
@@ -85,6 +87,12 @@ int main(int argc, char **argv)
 	SDL_DisplayMode dm;
 	SDL_GetCurrentDisplayMode(0, &dm);
 	t_code = ccdemo_load_text_wrap(get_src_code(), dm.w);
+
+	if (t_title == NULL || t_tag == NULL || t_yes == NULL || t_code == NULL)
+	{
+		std::cerr << "failed to load text texture\n";
+		return 1;
+	}
 
 	SDL_Event e;
 
@@ -137,16 +145,16 @@ int main(int argc, char **argv)
 		SDL_RenderClear(g_renderer);
 
 		// Render text
-		static float rot = 0;
-		static float scale = 1;
-		static float sinx = 0;
+		static float rot {0};
+		static float scale {1};
+		static float sinx {0};
 		rot += 1;
 		scale += 0.03;
 		sinx += 0.02;
 		scale = sinf(sinx) + 2; 
-		ccdemo_draw_text(t_title, screen_width/2, screen_height/2 - TEXT_YSPACE, scale + 1, sinf(sinx) * 40);
-		ccdemo_draw_text(t_tag, screen_width/2, screen_height/2 + TEXT_YSPACE/2, scale, rot);
-		ccdemo_draw_text(t_yes, screen_width/2, screen_height/2 + TEXT_YSPACE*2, scale, rot);
+		ccdemo_draw_text(t_title, screen_width/2, screen_height/2 - constants::TEXT_YSPACE, scale + 1, sinf(sinx) * 40);
+		ccdemo_draw_text(t_tag, screen_width/2, screen_height/2 + constants::TEXT_YSPACE/2, scale, rot);
+		ccdemo_draw_text(t_yes, screen_width/2, screen_height/2 + constants::TEXT_YSPACE*2, scale, rot);
 
 		// Draw source code until it fills the screen
 		for (int ydrawn = 0; ydrawn < screen_height;)
@@ -161,8 +169,8 @@ int main(int argc, char **argv)
 	#ifndef	VSYNC
 		// Manually delay the program if VSYNC is disabled
 		uint32_t tick_diff = SDL_GetTicks() - tick_this_frame;
-		if (tick_diff < FRAME_TICKS)
-			SDL_Delay(FRAME_TICKS - tick_diff);
+		if (tick_diff < constants::FRAME_TICKS)
+			SDL_Delay(constants::FRAME_TICKS - tick_diff);
 	#endif
 	}
 	TTF_CloseFont(g_font);
@@ -184,7 +192,7 @@ void ccdemo_hsv_to_rgb(double h, double s, double v, unsigned int *pr, unsigned 
 	else
 	{
 		double f, p, q, t;
-		h = h == 360 ? 0 : h / 60;
+		h = {h == 360 ? 0 : h / 60};
 		int i = (int) h;
 		f = h - i;
 		p = v * (1 - s);
@@ -230,16 +238,16 @@ void ccdemo_hsv_to_rgb(double h, double s, double v, unsigned int *pr, unsigned 
 }
 void ccdemo_draw_text(CCDemoText *text, int x, int y, float scale, float rot)
 {
-	int w = text->w * scale;
-	int h = text->h * scale;
-	SDL_Rect drect = {x-w/2, y-h/2, w, h};
+	auto w = static_cast<int>(text->w * scale);
+	auto h = static_cast<int>(text->h * scale);
+	SDL_Rect drect = {static_cast<int>(x-w/2), static_cast<int>(y-h/2), w, h};
 	SDL_RenderCopyEx(g_renderer, text->tex, NULL, &drect, rot, NULL, SDL_FLIP_NONE);
 }
-CCDemoText *ccdemo_load_text(char *str)
+CCDemoText *ccdemo_load_text(const char *str)
 {
-	CCDemoText *text = malloc(sizeof(CCDemoText));
+	CCDemoText *text {static_cast<CCDemoText *>(std::malloc(sizeof(CCDemoText)))};
 
-	SDL_Color col = {255, 255, 255, 255};
+	SDL_Color col {255, 255, 255, 255};
 	SDL_Surface *surf;
 	if ((surf = TTF_RenderText_Solid(g_font, str, col)) == NULL)
 	{
@@ -257,11 +265,11 @@ CCDemoText *ccdemo_load_text(char *str)
 	SDL_FreeSurface(surf);
 	return text;
 }
-CCDemoText *ccdemo_load_text_wrap(char *str, int wrap)
+CCDemoText *ccdemo_load_text_wrap(const char *str, int wrap)
 {
-	CCDemoText *text = malloc(sizeof(CCDemoText));
+	CCDemoText *text {static_cast<CCDemoText *>(std::malloc(sizeof(CCDemoText)))};
 
-	SDL_Color col = {255, 255, 255, 255};
+	SDL_Color col {255, 255, 255, 255};
 	SDL_Surface *surf;
 	if ((surf = TTF_RenderText_Blended_Wrapped(g_font, str, col, wrap)) == NULL)
 	{
@@ -279,17 +287,17 @@ CCDemoText *ccdemo_load_text_wrap(char *str, int wrap)
 	SDL_FreeSurface(surf);
 	return text;
 }
-char *get_src_code(void)
+const char *get_src_code(void)
 {
-	char *str = calloc(SRC_READ_MAX, sizeof(char));
-	FILE *fp;
-	if ((fp = fopen("codingclub_demo.c", "r")) == NULL)
+	char *str {static_cast<char *>(std::calloc(constants::SRC_READ_MAX, sizeof(char)))};
+	std::FILE *fp;
+	if ((fp = std::fopen("codingclub_demo.cpp", "r")) == NULL)
 	{
-		fprintf(stderr, "error opening file \"codingclub_demo.\"\n");
+		std::cerr << "error opening file \"codingclub_demo.cpp\"\n";
 		return NULL;
 	}
 	int c;
-	int i = 0;
+	int i {0};
 	str[0] = '\0';
 	while ((c = fgetc(fp)) != EOF)
 	{
@@ -297,10 +305,10 @@ char *get_src_code(void)
 			continue;
 		else
 			str[i] = c;
-		if (++i == SRC_READ_MAX - 1)
+		if (++i == constants::SRC_READ_MAX - 1)
 			break;
 	}
 	str[i] = '\0';
 	fclose(fp);
-	return str;
+	return static_cast<const char *>(str);
 }
