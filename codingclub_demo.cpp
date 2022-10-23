@@ -12,11 +12,15 @@
 // Comment to disable vsync
 #define	VSYNC
 
-// If vsync is disabled, this value represents how many ticks the program will wait between each frame
 namespace constants
 {
+	// If vsync is disabled, this value represents how many ticks the program will wait between each frame
 	inline constexpr auto FRAME_TICKS {30};
+
+	// Relative y-spacing of text
 	inline constexpr auto TEXT_YSPACE {100};
+
+	// Max # of chars read from source file to display while the program runs
 	inline constexpr auto SRC_READ_MAX {10000};
 }
 
@@ -32,9 +36,10 @@ static SDL_Window *g_window;
 static SDL_Renderer *g_renderer;
 
 void ccdemo_hsv_to_rgb(double h, double s, double v, unsigned int *pr, unsigned int *pg, unsigned int *pb);
-void ccdemo_draw_text(CCDemoText *text, int x, int y, float scale, float rot);
 CCDemoText *ccdemo_load_text(const char *str);
-CCDemoText *ccdemo_load_text_wrap(const char *str, int wrap);
+CCDemoText *ccdemo_load_text(const char *str, int wrap);
+void ccdemo_destroy_text(CCDemoText *text);
+void ccdemo_draw_text(CCDemoText *text, int x, int y, float scale, float rot);
 const char *get_src_code(void);
 
 int main(int argc, char **argv)
@@ -86,7 +91,7 @@ int main(int argc, char **argv)
 	t_yes = ccdemo_load_text("because yes.");
 	SDL_DisplayMode dm;
 	SDL_GetCurrentDisplayMode(0, &dm);
-	t_code = ccdemo_load_text_wrap(get_src_code(), dm.w);
+	t_code = ccdemo_load_text(get_src_code(), dm.w);
 
 	if (t_title == NULL || t_tag == NULL || t_yes == NULL || t_code == NULL)
 	{
@@ -154,7 +159,7 @@ int main(int argc, char **argv)
 		scale = sinf(sinx) + 2; 
 		ccdemo_draw_text(t_title, screen_width/2, screen_height/2 - constants::TEXT_YSPACE, scale + 1, sinf(sinx) * 40);
 		ccdemo_draw_text(t_tag, screen_width/2, screen_height/2 + constants::TEXT_YSPACE/2, scale, rot);
-		ccdemo_draw_text(t_yes, screen_width/2, screen_height/2 + constants::TEXT_YSPACE*2, scale, rot);
+		ccdemo_draw_text(t_yes, screen_width/2, screen_height/2 + constants::TEXT_YSPACE*2, scale, -rot);
 
 		// Draw source code until it fills the screen
 		for (int ydrawn = 0; ydrawn < screen_height;)
@@ -173,6 +178,10 @@ int main(int argc, char **argv)
 			SDL_Delay(constants::FRAME_TICKS - tick_diff);
 	#endif
 	}
+	ccdemo_destroy_text(t_title);
+	ccdemo_destroy_text(t_tag);
+	ccdemo_destroy_text(t_yes);
+	ccdemo_destroy_text(t_code);
 	TTF_CloseFont(g_font);
 	SDL_DestroyRenderer(g_renderer);
 	SDL_DestroyWindow(g_window);
@@ -236,13 +245,6 @@ void ccdemo_hsv_to_rgb(double h, double s, double v, unsigned int *pr, unsigned 
 	*pg = g * 255;
 	*pb = b * 255;
 }
-void ccdemo_draw_text(CCDemoText *text, int x, int y, float scale, float rot)
-{
-	auto w = static_cast<int>(text->w * scale);
-	auto h = static_cast<int>(text->h * scale);
-	SDL_Rect drect = {static_cast<int>(x-w/2), static_cast<int>(y-h/2), w, h};
-	SDL_RenderCopyEx(g_renderer, text->tex, NULL, &drect, rot, NULL, SDL_FLIP_NONE);
-}
 CCDemoText *ccdemo_load_text(const char *str)
 {
 	CCDemoText *text {static_cast<CCDemoText *>(std::malloc(sizeof(CCDemoText)))};
@@ -265,7 +267,7 @@ CCDemoText *ccdemo_load_text(const char *str)
 	SDL_FreeSurface(surf);
 	return text;
 }
-CCDemoText *ccdemo_load_text_wrap(const char *str, int wrap)
+CCDemoText *ccdemo_load_text(const char *str, int wrap)
 {
 	CCDemoText *text {static_cast<CCDemoText *>(std::malloc(sizeof(CCDemoText)))};
 
@@ -286,6 +288,18 @@ CCDemoText *ccdemo_load_text_wrap(const char *str, int wrap)
 	text->h = surf->h;
 	SDL_FreeSurface(surf);
 	return text;
+}
+void ccdemo_destroy_text(CCDemoText *text)
+{
+	SDL_DestroyTexture(text->tex);
+	std::free(text);
+}
+void ccdemo_draw_text(CCDemoText *text, int x, int y, float scale, float rot)
+{
+	auto w = static_cast<int>(text->w * scale);
+	auto h = static_cast<int>(text->h * scale);
+	SDL_Rect drect = {static_cast<int>(x-w/2), static_cast<int>(y-h/2), w, h};
+	SDL_RenderCopyEx(g_renderer, text->tex, NULL, &drect, rot, NULL, SDL_FLIP_NONE);
 }
 const char *get_src_code(void)
 {
