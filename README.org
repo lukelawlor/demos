@@ -1,0 +1,2 @@
+* demos
+This repo contains various demos I've made. Some of these were made to familiarize myself with certain programming languages and test things out. Others were made just for fun.
